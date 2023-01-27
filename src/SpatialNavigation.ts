@@ -63,6 +63,7 @@ interface FocusableComponent {
   onEnterPress: (details?: KeyPressDetails) => void;
   onEnterRelease: () => void;
   onArrowPress: (direction: string, details: KeyPressDetails) => boolean;
+  onKeyPress: (details: KeyPressDetails) => boolean;
   onFocus: (layout: FocusableComponentLayout, details: FocusDetails) => void;
   onBlur: (layout: FocusableComponentLayout, details: FocusDetails) => void;
   onUpdateFocus: (focused: boolean) => void;
@@ -86,6 +87,7 @@ interface FocusableComponentUpdatePayload {
   onEnterPress: (details?: KeyPressDetails) => void;
   onEnterRelease: () => void;
   onArrowPress: (direction: string, details: KeyPressDetails) => boolean;
+  onKeyPress: (details: KeyPressDetails) => boolean;
   onFocus: (layout: FocusableComponentLayout, details: FocusDetails) => void;
   onBlur: (layout: FocusableComponentLayout, details: FocusDetails) => void;
 }
@@ -111,6 +113,8 @@ export type PressedKeys = { [index: string]: number };
  */
 export interface KeyPressDetails {
   pressedKeys: PressedKeys;
+  pressedKey: string;
+  navigated?: boolean;
 }
 
 /**
@@ -653,14 +657,16 @@ class SpatialNavigationService {
           ? this.pressedKeys[eventType] + 1
           : 1;
 
-        event.preventDefault();
-        event.stopPropagation();
-
         const keysDetails = {
-          pressedKeys: this.pressedKeys
+          pressedKeys: this.pressedKeys,
+          pressedKey: eventType,
         };
 
         if (eventType === KEY_ENTER && this.focusKey) {
+          // prevent default behavior and stop propagation for key enter
+          event.preventDefault();
+          event.stopPropagation();
+
           this.onEnterPress(keysDetails);
 
           return;
@@ -672,11 +678,15 @@ class SpatialNavigationService {
         if (preventDefaultNavigation) {
           this.log('keyDownEventListener', 'default navigation prevented');
 
+          // prevent default behavior and stop propagation for handled arrow keys
+          event.preventDefault();
+          event.stopPropagation();
+
           if (this.visualDebugger) {
             this.visualDebugger.clear();
           }
         } else {
-          this.onKeyEvent(event);
+          this.onKeyEvent({... keysDetails, pressedKey: eventType}, event);
         }
       };
 
@@ -793,15 +803,52 @@ class SpatialNavigationService {
     );
   }
 
+  onKeyPress(keysDetails: KeyPressDetails, event: KeyboardEvent, focusKey: string) {
+    const component = focusKey ? this.focusableComponents[focusKey] : undefined;
+
+    /* Guard against last-focused component being unmounted at time of onKeyPress (e.g due to UI fading out) */
+    /* And if key press reaches root element also abort and handle event */
+    if (!component) {
+      this.log('onKeyPress', 'noComponent', focusKey);
+
+      // prevent default behavior and stop propagation if no handling component
+      event.preventDefault();
+      event.stopPropagation();
+
+      return;
+    }
+
+    // stop if component is focusable and it's onKeyPress should handle key on it's own
+    if (
+      component.focusable &&
+      component.onKeyPress &&
+      component.onKeyPress(keysDetails)
+    ) {
+      this.log('onKeyPress', 'handled', keysDetails.pressedKey, focusKey);
+      // prevent default behavior and stop propagation if handled by on key press handler
+      event.preventDefault();
+      event.stopPropagation();
+
+      return;
+    }
+
+    // when not navigated bubble key handling to parent component in focus tree
+    if (!keysDetails.navigated) {
+      this.onKeyPress(keysDetails, event, component.parentFocusKey);
+    }
+  }
+
   /**
    * Move focus by direction, if you can't use buttons or focusing by key.
    *
    * @example
    * navigateByDirection('right') // The focus is moved to right
    */
-  navigateByDirection(direction: string, focusDetails: FocusDetails) {
+  navigateByDirection(direction: string, focusDetails: FocusDetails): boolean {
+    let navigated = false;
+
     if (this.paused === true || this.nativeMode) {
-      return;
+      return navigated;
     }
 
     const validDirections = [
@@ -813,7 +860,7 @@ class SpatialNavigationService {
 
     if (validDirections.includes(direction)) {
       this.log('navigateByDirection', 'direction', direction);
-      this.smartNavigate(direction, null, focusDetails);
+      navigated = this.smartNavigate(direction, null, focusDetails);
     } else {
       this.log(
         'navigateByDirection',
@@ -821,18 +868,34 @@ class SpatialNavigationService {
         validDirections
       );
     }
+
+    return navigated;
   }
 
-  onKeyEvent(event: KeyboardEvent) {
+
+
+  onKeyEvent(keysDetails: KeyPressDetails, event: KeyboardEvent) {
     if (this.visualDebugger) {
       this.visualDebugger.clear();
     }
 
-    const direction = findKey(this.getKeyMap(), (codeList) =>
-      codeList.includes(event.keyCode)
-    );
+    const key = findKey(this.getKeyMap(), (codeList) => codeList.includes(event.keyCode));
 
-    this.smartNavigate(direction, null, { event });
+    switch (key) {
+      case DIRECTION_LEFT:
+      case DIRECTION_RIGHT:
+      case DIRECTION_UP:
+      case DIRECTION_DOWN:
+        // prevent default behavior and stop propagation for arrow keys
+        event.preventDefault();
+        event.stopPropagation();
+
+        this.onKeyPress({...keysDetails, navigated: this.smartNavigate(key, null, { event })}, event, this.focusKey);
+        break;
+      default:
+        this.onKeyPress(keysDetails, event, this.focusKey);
+        break;
+    }
   }
 
   /**
@@ -843,9 +906,9 @@ class SpatialNavigationService {
     direction: string,
     fromParentFocusKey: string,
     focusDetails: FocusDetails
-  ) {
+  ): boolean {
     if (this.nativeMode) {
-      return;
+      return false;
     }
 
     this.log('smartNavigate', 'direction', direction);
@@ -955,16 +1018,19 @@ class SpatialNavigationService {
 
       if (nextComponent) {
         this.setFocus(nextComponent.focusKey, focusDetails);
-      } else {
-        const parentComponent = this.focusableComponents[parentFocusKey];
+        return true;
+      }
 
-        this.saveLastFocusedChildKey(parentComponent, focusKey);
+      const parentComponent = this.focusableComponents[parentFocusKey];
 
-        if (!parentComponent || !parentComponent.isFocusBoundary) {
-          this.smartNavigate(direction, parentFocusKey, focusDetails);
-        }
+      this.saveLastFocusedChildKey(parentComponent, focusKey);
+
+      if (!parentComponent || !parentComponent.isFocusBoundary) {
+        return this.smartNavigate(direction, parentFocusKey, focusDetails);
       }
     }
+
+    return false;
   }
 
   saveLastFocusedChildKey(component: FocusableComponent, focusKey: string) {
@@ -1095,6 +1161,7 @@ class SpatialNavigationService {
     onEnterPress,
     onEnterRelease,
     onArrowPress,
+    onKeyPress,
     onFocus,
     onBlur,
     saveLastFocusedChild,
@@ -1113,6 +1180,7 @@ class SpatialNavigationService {
       onEnterPress,
       onEnterRelease,
       onArrowPress,
+      onKeyPress,
       onFocus,
       onBlur,
       onUpdateFocus,
@@ -1419,6 +1487,7 @@ class SpatialNavigationService {
       onEnterPress,
       onEnterRelease,
       onArrowPress,
+      onKeyPress,
       onFocus,
       onBlur
     }: FocusableComponentUpdatePayload
@@ -1436,6 +1505,7 @@ class SpatialNavigationService {
       component.onEnterPress = onEnterPress;
       component.onEnterRelease = onEnterRelease;
       component.onArrowPress = onArrowPress;
+      component.onKeyPress = onKeyPress;
       component.onFocus = onFocus;
       component.onBlur = onBlur;
 

@@ -24,6 +24,11 @@ export type EnterPressHandler<P = object> = (
 
 export type EnterReleaseHandler<P = object> = (props: P) => void;
 
+export type KeyPressHandler<P = object> = (
+  props: P,
+  details: KeyPressDetails
+) => boolean;
+
 export type ArrowPressHandler<P = object> = (
   direction: string,
   props: P,
@@ -53,6 +58,7 @@ export interface UseFocusableConfig<P = object> {
   onEnterPress?: EnterPressHandler<P>;
   onEnterRelease?: EnterReleaseHandler<P>;
   onArrowPress?: ArrowPressHandler<P>;
+  onKeyPress?: KeyPressHandler<P>;
   onFocus?: FocusHandler<P>;
   onBlur?: BlurHandler<P>;
   extraProps?: P;
@@ -83,6 +89,7 @@ const useFocusableHook = <P>({
   onEnterPress = noop,
   onEnterRelease = noop,
   onArrowPress = () => true,
+  onKeyPress = () => false,
   onFocus = noop,
   onBlur = noop,
   extraProps
@@ -102,6 +109,12 @@ const useFocusableHook = <P>({
     (direction: string, details: KeyPressDetails) =>
       onArrowPress(direction, extraProps, details),
     [extraProps, onArrowPress]
+  );
+
+  const onKeyPressHandler = useCallback(
+    (details: KeyPressDetails) =>
+      onKeyPress(extraProps, details),
+    [extraProps, onKeyPress]
   );
 
   const onFocusHandler = useCallback(
@@ -151,6 +164,7 @@ const useFocusableHook = <P>({
       onEnterPress: onEnterPressHandler,
       onEnterRelease: onEnterReleaseHandler,
       onArrowPress: onArrowPressHandler,
+      onKeyPress: onKeyPressHandler,
       onFocus: onFocusHandler,
       onBlur: onBlurHandler,
       onUpdateFocus: (isFocused = false) => setFocused(isFocused),
@@ -181,6 +195,7 @@ const useFocusableHook = <P>({
       onEnterPress: onEnterPressHandler,
       onEnterRelease: onEnterReleaseHandler,
       onArrowPress: onArrowPressHandler,
+      onKeyPress: onKeyPressHandler,
       onFocus: onFocusHandler,
       onBlur: onBlurHandler
     });
@@ -192,6 +207,7 @@ const useFocusableHook = <P>({
     onEnterPressHandler,
     onEnterReleaseHandler,
     onArrowPressHandler,
+    onKeyPressHandler,
     onFocusHandler,
     onBlurHandler
   ]);
