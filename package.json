@@ -1,5 +1,5 @@
 {
-  "name": "@noriginmedia/norigin-spatial-navigation",
+  "name": "@drudolf/spatial-navigation",
   "version": "1.1.5",
   "description": "React hooks based Spatial Navigation solution",
   "main": "dist/index.js",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NoriginMedia/norigin-spatial-navigation.git"
+    "url": "git+https://github.com/drudolf/norigin-spatial-navigation.git"
   },
   "keywords": [
     "react",
@@ -29,9 +29,9 @@
   "author": "Dmitriy Bryokhin <dmitriy.bryokhin@noriginmedia.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NoriginMedia/norigin-spatial-navigation/issues"
+    "url": "https://github.com/drudolf/norigin-spatial-navigation/issues"
   },
-  "homepage": "https://github.com/NoriginMedia/norigin-spatial-navigation#readme",
+  "homepage": "https://github.com/drudolf/norigin-spatial-navigation#readme",
   "peerDependencies": {
     "react": ">=16.8.0"
   },
