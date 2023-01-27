@@ -334,6 +334,11 @@ Receives `direction` (`left`, `right`, `up`, `down`), `extraProps` (see below) a
 This callback HAS to return `true` if you want to proceed with the default directional navigation behavior, or `false`
 if you want to block the navigation in the specified direction.
 
+##### `onKeyPress` (function)
+Callback that is called when the component is focused and any other key besides Enter or Arrows is pressed.
+Receives `extraProps` (see below) and `KeyPressDetails` as arguments.
+This callback HAS to return `true` if you want to stop proceeding with key handling traversing up the focus tree and stopping event from propagating and preventing default, or `false` to traverse further up the tree. If key event was never handled from some component it will be stopped and prevented at root.
+
 ##### `onFocus` (function)
 Callback that is called when component gets focus.
 Receives `FocusableComponentLayout`, `extraProps` and `FocusDetails` as arguments.
@@ -383,10 +388,10 @@ or an automatically generated one.
 #### `getCurrentFocusKey` (function) `() => string`
 Returns the currently focused component's focus key.
 
-##### `navigateByDirection` (function) `(direction: string, focusDetails: FocusDetails) => void`
+##### `navigateByDirection` (function) `(direction: string, focusDetails: FocusDetails) => boolean`
 Method to manually navigation to a certain direction. I.e. you can assign a mouse-wheel to navigate Up and Down.
 Also useful when you have some "Arrow-like" UI in the app that is meant to navigate in certain direction when pressed
-with the mouse or a "magic remote" on some TVs.
+with the mouse or a "magic remote" on some TVs. Returns true if focus changed.
 
 ##### `pause` (function)
 Pauses all the key event handlers.
@@ -418,6 +423,8 @@ interface FocusableComponentLayout {
 ```ts
 interface KeyPressDetails {
   pressedKeys: PressedKeys;
+  pressedKey?: string;
+  navigated?: boolean;
 }
 ```
 
