@@ -15,15 +15,30 @@ import {
   FocusContext,
   FocusDetails,
   FocusableComponentLayout,
-  KeyPressDetails
+  KeyPressDetails,
+  setKeyMap
 } from './index';
 
 const logo = require('../logo.png').default;
 
 init({
-  debug: false,
-  visualDebug: false
+  debug: true,
+  visualDebug: false,
 });
+
+// const KEY_LEFT = 'left';
+const KEY_RIGHT = 'right';
+// const KEY_UP = 'up';
+// const KEY_DOWN = 'down';
+const KEY_BACK = 'back';
+const KEY_SPACE = 'space';
+
+const CUSTOM_KEY_MAP = {
+  [KEY_BACK]: 8,
+  [KEY_SPACE]: 32
+};
+
+setKeyMap(CUSTOM_KEY_MAP);
 
 const rows = shuffle([
   {
@@ -127,9 +142,10 @@ const NmLogo = styled.img`
 
 interface MenuProps {
   focusKey: string;
+  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
 }
 
-function Menu({ focusKey: focusKeyParam }: MenuProps) {
+function Menu({ focusKey: focusKeyParam, onKeyPress}: MenuProps) {
   const {
     ref,
     focusSelf,
@@ -152,9 +168,10 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
     onEnterPress: () => {},
     onEnterRelease: () => {},
     onArrowPress: () => true,
+    onKeyPress,
     onFocus: () => {},
     onBlur: () => {},
-    extraProps: { foo: 'bar' }
+    extraProps: { title: 'menu' }
   });
 
   useEffect(() => {
@@ -209,6 +226,7 @@ interface AssetProps {
   title: string;
   color: string;
   onEnterPress: (props: object, details: KeyPressDetails) => void;
+  onKeyPress: (props: {title: string, color: string}, details: KeyPressDetails) => boolean;
   onFocus: (
     layout: FocusableComponentLayout,
     props: object,
@@ -216,9 +234,10 @@ interface AssetProps {
   ) => void;
 }
 
-function Asset({ title, color, onEnterPress, onFocus }: AssetProps) {
+function Asset({ title, color, onEnterPress, onKeyPress, onFocus }: AssetProps) {
   const { ref, focused } = useFocusable({
     onEnterPress,
+    onKeyPress,
     onFocus,
     extraProps: {
       title,
@@ -262,7 +281,9 @@ const ContentRowScrollingContent = styled.div`
 
 interface ContentRowProps {
   title: string;
-  onAssetPress: (props: object, details: KeyPressDetails) => void;
+  onAssetEnterPress: (props: object, details: KeyPressDetails) => void;
+  onAssetKeyPress: (props: object, details: KeyPressDetails) => boolean;
+  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
   onFocus: (
     layout: FocusableComponentLayout,
     props: object,
@@ -272,11 +293,17 @@ interface ContentRowProps {
 
 function ContentRow({
   title: rowTitle,
-  onAssetPress,
+  onAssetEnterPress,
+  onAssetKeyPress,
+  onKeyPress,
   onFocus
 }: ContentRowProps) {
   const { ref, focusKey } = useFocusable({
-    onFocus
+    onFocus,
+    onKeyPress,
+    extraProps: {
+      title: rowTitle,
+    },
   });
 
   const scrollingRef = useRef(null);
@@ -302,7 +329,8 @@ function ContentRow({
                 key={title}
                 title={title}
                 color={color}
-                onEnterPress={onAssetPress}
+                onEnterPress={onAssetEnterPress}
+                onKeyPress={onAssetKeyPress}
                 onFocus={onAssetFocus}
               />
             ))}
@@ -362,14 +390,24 @@ const ScrollingRows = styled.div`
   flex-grow: 1;
 `;
 
-function Content() {
-  const { ref, focusKey } = useFocusable();
+interface ContentProps {
+  focusKey: string;
+  onAssetEnterPress: (props: object, details: KeyPressDetails) => void;
+  onAssetKeyPress: (props: object, details: KeyPressDetails) => boolean;
+  onContentRowKeyPress: (props: object, details: KeyPressDetails) => boolean;
+  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
+  selectedAsset: AssetProps;
+}
 
-  const [selectedAsset, setSelectedAsset] = useState(null);
-
-  const onAssetPress = useCallback((asset: AssetProps) => {
-    setSelectedAsset(asset);
-  }, []);
+function Content({
+  focusKey: focusKeyParam,
+  onAssetEnterPress,
+  onAssetKeyPress,
+  onContentRowKeyPress,
+  onKeyPress,
+  selectedAsset,
+}: ContentProps) {
+  const { ref, focusKey } = useFocusable({ focusKey: focusKeyParam, onKeyPress, extraProps: { title: 'content' } });
 
   const onRowFocus = useCallback(
     ({ y }: { y: number }) => {
@@ -384,7 +422,7 @@ function Content() {
   return (
     <FocusContext.Provider value={focusKey}>
       <ContentWrapper>
-        <ContentTitle>Norigin Spatial Navigation</ContentTitle>
+        <ContentTitle>Norigin Spatial Navigation+</ContentTitle>
         <SelectedItemWrapper>
           <SelectedItemBox
             color={selectedAsset ? selectedAsset.color : '#565b6b'}
@@ -401,8 +439,10 @@ function Content() {
               <ContentRow
                 key={title}
                 title={title}
-                onAssetPress={onAssetPress}
+                onAssetEnterPress={onAssetEnterPress}
+                onAssetKeyPress={onAssetKeyPress}
                 onFocus={onRowFocus}
+                onKeyPress={onContentRowKeyPress}
               />
             ))}
           </div>
@@ -412,12 +452,12 @@ function Content() {
   );
 }
 
-const AppContainer = styled.div`
-  background-color: #221c35;
-  width: 1440px;
-  height: 810px;
-  display: flex;
-  flex-direction: row;
+const Wrapper = styled.div`
+background-color: #221c35;
+width: 1440px;
+height: 810px;
+display: flex;
+flex-direction: row;
 `;
 
 const GlobalStyle = createGlobalStyle`
@@ -426,14 +466,102 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
+function AppContainer() {
+  const [selectedAsset, setSelectedAsset] = useState(null);
+
+  const onAssetEnterPress = useCallback((asset: AssetProps) => {
+    setSelectedAsset(asset);
+  }, []);
+
+  const onKeyPress = useCallback((obj: {title: string}, details: KeyPressDetails) => {
+    switch(details.pressedKey) {
+      case KEY_BACK:
+        setSelectedAsset({
+          color: '#4d8c57',
+          title: `Pressed ${details.pressedKey} key on ${obj.title}`
+        });
+        return true;
+      default:
+        setSelectedAsset({
+          color: '#f3b994',
+          title: `Pressed ${details.pressedKey} key on ${obj.title}`
+        });
+        return true;
+    }
+  }, []);
+
+  const onContentRowKeyPress = useCallback((row: ContentRowProps, details: KeyPressDetails) => {
+    switch(details.pressedKey) {
+      case KEY_BACK:
+        setSelectedAsset({
+          color: '#4d8c57',
+          title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+        });
+        return false;
+      case KEY_RIGHT:
+        if (!details.navigated) {
+          setSelectedAsset({
+            color: '#c4a484',
+            title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+          });
+          return true;
+        }
+        return true;
+      /*
+      case KEY_UP:
+        if (!details.navigated) {
+          setSelectedAsset({
+            color: '#c4a484',
+            title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+          });
+          return true;
+        }
+        return true;
+      case KEY_DOWN:
+          if (!details.navigated) {
+            setSelectedAsset({
+              color: '#c4a484',
+              title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+            });
+            return true;
+          }
+          return false;
+        */
+      default:
+        return false;
+    }
+  }, []);
+
+  const onAssetKeyPress = useCallback((asset: AssetProps, details: KeyPressDetails) => {
+    switch(details.pressedKey) {
+      case KEY_BACK:
+        setSelectedAsset({...asset, title: `Pressed ${details.pressedKey} key on ${asset.title}`});
+        return false; // let back bubble to row
+      default:
+        return false;
+    }
+  }, []);
+
+  return (
+      <Wrapper>
+        <GlobalStyle />
+        <Menu focusKey="MENU" onKeyPress={onKeyPress} />
+        <Content
+          focusKey="CONTENT"
+          onAssetEnterPress={onAssetEnterPress}
+          onAssetKeyPress={onAssetKeyPress}
+          onContentRowKeyPress={onContentRowKeyPress}
+          onKeyPress={onKeyPress}
+          selectedAsset={selectedAsset}
+        />
+      </Wrapper>
+  )
+}
+
 function App() {
   return (
     <React.StrictMode>
-      <AppContainer>
-        <GlobalStyle />
-        <Menu focusKey="MENU" />
-        <Content />
-      </AppContainer>
+      <AppContainer />
     </React.StrictMode>
   );
 }
