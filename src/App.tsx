@@ -142,7 +142,7 @@ const NmLogo = styled.img`
 
 interface MenuProps {
   focusKey: string;
-  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
+  onKeyPress: (details: KeyPressDetails, props: {title: string}) => boolean;
 }
 
 function Menu({ focusKey: focusKeyParam, onKeyPress}: MenuProps) {
@@ -226,7 +226,7 @@ interface AssetProps {
   title: string;
   color: string;
   onEnterPress: (props: object, details: KeyPressDetails) => void;
-  onKeyPress: (props: {title: string, color: string}, details: KeyPressDetails) => boolean;
+  onKeyPress: (details: KeyPressDetails, props: {title: string, color: string}) => boolean;
   onFocus: (
     layout: FocusableComponentLayout,
     props: object,
@@ -282,8 +282,8 @@ const ContentRowScrollingContent = styled.div`
 interface ContentRowProps {
   title: string;
   onAssetEnterPress: (props: object, details: KeyPressDetails) => void;
-  onAssetKeyPress: (props: object, details: KeyPressDetails) => boolean;
-  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
+  onAssetKeyPress: (details: KeyPressDetails, props: object) => boolean;
+  onKeyPress: (details: KeyPressDetails, props: {title: string}) => boolean;
   onFocus: (
     layout: FocusableComponentLayout,
     props: object,
@@ -394,8 +394,8 @@ interface ContentProps {
   focusKey: string;
   onAssetEnterPress: (props: object, details: KeyPressDetails) => void;
   onAssetKeyPress: (props: object, details: KeyPressDetails) => boolean;
-  onContentRowKeyPress: (props: object, details: KeyPressDetails) => boolean;
-  onKeyPress: (props: {title: string}, details: KeyPressDetails) => boolean;
+  onContentRowKeyPress: (details: KeyPressDetails, props: object) => boolean;
+  onKeyPress: (details: KeyPressDetails, props: {title: string}) => boolean;
   selectedAsset: AssetProps;
 }
 
@@ -473,36 +473,36 @@ function AppContainer() {
     setSelectedAsset(asset);
   }, []);
 
-  const onKeyPress = useCallback((obj: {title: string}, details: KeyPressDetails) => {
+  const onKeyPress = useCallback((details: KeyPressDetails, extraProps: {title: string}) => {
     switch(details.pressedKey) {
       case KEY_BACK:
         setSelectedAsset({
           color: '#4d8c57',
-          title: `Pressed ${details.pressedKey} key on ${obj.title}`
+          title: `Pressed ${details.pressedKey} key on ${extraProps.title}`
         });
         return true;
       default:
         setSelectedAsset({
           color: '#f3b994',
-          title: `Pressed ${details.pressedKey} key on ${obj.title}`
+          title: `Pressed ${details.pressedKey} key on ${extraProps.title}`
         });
         return true;
     }
   }, []);
 
-  const onContentRowKeyPress = useCallback((row: ContentRowProps, details: KeyPressDetails) => {
+  const onContentRowKeyPress = useCallback((details: KeyPressDetails, extraProps: ContentRowProps) => {
     switch(details.pressedKey) {
       case KEY_BACK:
         setSelectedAsset({
           color: '#4d8c57',
-          title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+          title: `Pressed ${details.pressedKey} key on ${extraProps.title} row`,
         });
         return false;
       case KEY_RIGHT:
         if (!details.navigated) {
           setSelectedAsset({
             color: '#c4a484',
-            title: `Pressed ${details.pressedKey} key on ${row.title} row`,
+            title: `Pressed ${details.pressedKey} key on ${extraProps.title} row`,
           });
           return true;
         }

@@ -25,8 +25,8 @@ export type EnterPressHandler<P = object> = (
 export type EnterReleaseHandler<P = object> = (props: P) => void;
 
 export type KeyPressHandler<P = object> = (
-  props: P,
-  details: KeyPressDetails
+  details: KeyPressDetails,
+  props: P
 ) => boolean;
 
 export type ArrowPressHandler<P = object> = (
@@ -113,7 +113,7 @@ const useFocusableHook = <P>({
 
   const onKeyPressHandler = useCallback(
     (details: KeyPressDetails) =>
-      onKeyPress(extraProps, details),
+      onKeyPress(details, extraProps),
     [extraProps, onKeyPress]
   );
 
