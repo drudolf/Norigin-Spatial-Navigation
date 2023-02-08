@@ -832,10 +832,8 @@ class SpatialNavigationService {
       return;
     }
 
-    // when not navigated bubble key handling to parent component in focus tree
-    if (!keysDetails.navigated) {
-      this.onKeyPress(keysDetails, event, component.parentFocusKey);
-    }
+    // bubble key handling to parent component in focus tree
+    this.onKeyPress(keysDetails, event, component.parentFocusKey);
   }
 
   /**
