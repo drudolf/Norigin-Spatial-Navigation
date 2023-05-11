@@ -1524,4 +1524,4 @@ class SpatialNavigationService {
 /** @internal */
 export const SpatialNavigation = new SpatialNavigationService();
 
-export const { init, setThrottle, destroy, setKeyMap } = SpatialNavigation;
+export const { init, setThrottle, destroy, setKeyMap, isFocusableComponent } = SpatialNavigation;
