@@ -547,6 +547,7 @@ class SpatialNavigationService {
     this.setThrottle = this.setThrottle.bind(this);
     this.destroy = this.destroy.bind(this);
     this.setKeyMap = this.setKeyMap.bind(this);
+    this.isFocusableComponent = this.isFocusableComponent.bind(this);
     this.getCurrentFocusKey = this.getCurrentFocusKey.bind(this);
 
     this.debug = false;
